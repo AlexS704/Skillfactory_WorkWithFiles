@@ -5,56 +5,53 @@ using System.Text;
 internal class Program
 {
     private static void Main(string[] args)
-    {
-        //string directoryPath = @" C:\Users\Александр\Desktop\Test_papka";
-        if (args.Length > 0)
+    {       
+        Console.Write("Введите путь до папки:");
+        string directoryPath = Console.ReadLine();
+
+        try
         {
-            string directoryPath = args[0];
-            //CheckFilesDirectory(directoryPath);
-            CheckDirectoriesInDirectory(directoryPath);
+            if (!Directory.Exists(directoryPath))
+            {
+                throw new IOException($"Папка '{directoryPath}' не существует.");
+            }
+
+            CheckFilesInDirectoryRecursively(directoryPath);
         }
-        else
+        catch (Exception ex)
         {
-            Console.WriteLine("Usage: Task 1 run <directory_path>");
+            Console.WriteLine($"Ошибка: {ex.Message}");
+        }       
+                              
+    } 
+
+    private static void CheckFilesInDirectoryRecursively(string directoryPath)
+    {
+        foreach (string fileName in Directory.EnumerateFiles(directoryPath, "*.*", SearchOption.AllDirectories))
+        {
+            FileInfo fileInfo = new FileInfo(fileName);
+            DateTime lastWriteTime = fileInfo.LastWriteTime;
+            TimeSpan timeSinceLastModified = DateTime.Now - lastWriteTime;
+
+            /* Отладка
+            Console.WriteLine($"Last write time: {lastWriteTime}");
+            Console.WriteLine($"Current time: {DateTime.Now}");
+            Console.WriteLine($"Time since last modification: {timeSinceLastModified}");
+            */
+
+            if (timeSinceLastModified >= TimeSpan.FromMinutes(30))
+            {
+                fileInfo.Delete();
+            }
         }
 
-        
-    }
-
-    
-    private static void CheckDirectoriesInDirectory(string directoryPath)
-    {
         foreach (string subDirectory in Directory.EnumerateDirectories(directoryPath))
         {
-            DirectoryInfo directoryInfo = new DirectoryInfo(subDirectory);
-            DateTime lastWriteTime = directoryInfo.LastWriteTime;
-            TimeSpan timeSinceLastModified = DateTime.UtcNow - lastWriteTime;
+            CheckFilesInDirectoryRecursively(subDirectory);
 
-            if (timeSinceLastModified > TimeSpan.FromMinutes(30))
-            {
-                directoryInfo.Delete();
-            }
-
-            else
-            {
-                static void CheckFilesDirectory(string directoryPath)
-                {
-                    foreach (string fileName in Directory.EnumerateFiles(directoryPath))
-                    {
-                        FileInfo fileInfo = new FileInfo(fileName);
-                        DateTime lastWrite = fileInfo.LastWriteTime;
-                        TimeSpan timeSinceLastModified = DateTime.UtcNow - lastWrite;
-
-                        if (timeSinceLastModified > TimeSpan.FromMinutes(30))
-                        {
-                            fileInfo.Delete();
-                        }
-                    }
-
-                }
-            }
-
-            CheckDirectoriesInDirectory(subDirectory);
+            Directory.Delete(subDirectory, true);
         }
+
+        Console.WriteLine($"Папка по пути:{directoryPath} очищена от файлов и папок, не использующихся дольше 30 минут");
     }
 }
