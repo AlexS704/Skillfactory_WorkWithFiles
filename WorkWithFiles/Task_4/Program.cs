@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using System.Globalization;
 
 namespace Task_4
 {
@@ -20,15 +21,28 @@ namespace Task_4
     class Student
     {
         public string Name { get; set; }
-        public int Group { get; set; }
-        public DateTime Birthdate { get; set; }
-        public double AverageGrade { get; set; }
-    }
+        public string Group { get; set; }
+        public DateTime DateOfBirth { get; set; }
+        public decimal AverageGrade { get; set; }
+
+        //public void ParseGroup(string groupString)
+        //{
+        //    int parsedGroup;
+        //    if (int.TryParse(groupString, NumberStyles.Integer, CultureInfo.InvariantCulture, out parsedGroup))
+        //    {     
+        //       this.Group = parsedGroup.ToString();
+        //    }
+        //    else
+        //    {
+        //        throw new FormatException($"Invalid format for group value: {groupString}");
+        //    }
+        //}                 
+    }   
     internal class Program
     {
         static void Main(string[] args)
         {
-            const string inputFileName = @"C:\\Users\Александр\Desktop\BinWrite\students.dat";
+            const string inputFileName = @"C:\\Users\Александр\Desktop\Write\students.dat";
             const string studentsDirectoryName = "Students";
 
             List<Student> students = ReadStudentsFromBinFile(inputFileName);
@@ -47,27 +61,21 @@ namespace Task_4
                 {
                     try
                     {
-                        int birthdateLength = br.Read7BitEncodedInt();
-                        byte[] birthdateBytes = br.ReadBytes(birthdateLength);
-                        long ticks = BitConverter.ToInt64(birthdateBytes, 0);
-                        if (DateTime.MinValue.Ticks <= ticks && ticks <= DateTime.MaxValue.Ticks)
-                        {
-                            DateTime birthdate = new DateTime(ticks);
+                        long ticks = br.ReadInt64();
+                        DateTime date = DateTime.FromBinary(ticks);
 
-                            Student student = new Student
-                            {
-                                Name = br.ReadString(),
-                                Group = br.ReadInt32(),
-                                Birthdate = birthdate,
-                                AverageGrade = br.ReadDouble()
-                            };
-                            students.Add(student);
-                        }
-                        else
+                        string groupString = br.ReadString();
+                        string name = br.ReadString();
+                        decimal grade = br.ReadDecimal();
+
+                        Student student = new Student
                         {
-                            throw new ArgumentOutOfRangeException("ticks", "Value out of range for DateTime.");
-                        }
-                        
+                            Name = name,
+                            DateOfBirth = date,
+                            AverageGrade = grade
+                        };
+                        //student.ParseGroup(groupString);
+                        students.Add(student);
                     }
                     catch (EndOfStreamException)
                     {
@@ -77,6 +85,11 @@ namespace Task_4
                 return students;
             }
         }
+        /// <summary>
+        /// Cоздает директорию Students на рабочем столе,
+        /// если она еще не существует
+        /// </summary>
+        /// <param name="studentsDirectoryName"></param>
         private static void CreatesStudentsDirectory(string studentsDirectoryName)
         {
             string path = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
@@ -86,25 +99,46 @@ namespace Task_4
                 Directory.CreateDirectory(fullPath);
             }            
         }
-
+        /// <summary>
+        /// Записывает данные студентов в текстовые файлы по группам.
+        /// Группирует студентов по группам, создает отдельные текстовые файлы для каждой группы
+        /// и записывает данные студентов в эти файлы.
+        /// </summary>
+        /// <param name="students"></param>
+        /// <param name="studentsDirectoryName"></param>
         private static void WriteStudentsToTextFiles(List<Student> students, string studentsDirectoryName)
         {
             string path = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
             string fullPath = Path.Combine(path, studentsDirectoryName);
 
-            foreach (var group in students.GroupBy(s => s.Group))
+            //групперуем студентов по группам
+            Dictionary<string, List<Student>> groupedStudents = students.GroupBy(s => s.Group).Select(g => g.ToList()).ToDictionary(list => list.First().Group, List => List);
+
+            foreach (var group in groupedStudents)
             {
                 string groupFileName = $"Group_{group.Key}.txt";
                 string fullGroupPath = Path.Combine(fullPath, groupFileName);
                 using (var sw = new StreamWriter(fullGroupPath))
                 {
-                    foreach (var student in group)
+                    foreach (var student in group.Value)
                     {
-                        sw.WriteLine($"{student.Name}, {student.Birthdate:d}, {student.AverageGrade:F2}");
+                        sw.WriteLine($"{student.Name}, {student.DateOfBirth:d}, {student.AverageGrade:F2}");
                     }
                 }
             }
-        }
 
+            //foreach (var group in students.GroupBy(s => s.Group))
+            //{
+            //    string groupFilename = $"Group_{group.Key}.txt";
+            //    string fullGroupPath = Path.Combine(path, groupFilename);
+            //    using (var sw = new StreamWriter(fullGroupPath))
+            //    {
+            //        foreach (var student in group)
+            //        {
+            //            sw.WriteLine($"{student.Name}, {student.DateOfBirth:d}, {student.AverageGrade:F2}");
+            //        }
+            //    }
+            //} 
+        }
     }
 }
