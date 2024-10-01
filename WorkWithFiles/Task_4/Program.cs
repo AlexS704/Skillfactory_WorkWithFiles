@@ -17,26 +17,13 @@ namespace Task_4
     /// *   Внутри раскидать всех студентов из файла по группам (каждая группа-отдельный текстовый файл), 
     /// в файле группы студенты перечислены построчно в формате "Имя, дата рождения, средний балл".
     /// </summary>
-
+        
     class Student
     {
         public string Name { get; set; }
         public string Group { get; set; }
         public DateTime DateOfBirth { get; set; }
-        public decimal AverageGrade { get; set; }
-
-        //public void ParseGroup(string groupString)
-        //{
-        //    int parsedGroup;
-        //    if (int.TryParse(groupString, NumberStyles.Integer, CultureInfo.InvariantCulture, out parsedGroup))
-        //    {     
-        //       this.Group = parsedGroup.ToString();
-        //    }
-        //    else
-        //    {
-        //        throw new FormatException($"Invalid format for group value: {groupString}");
-        //    }
-        //}                 
+        public decimal AverageGrade { get; set; }                           
     }   
     internal class Program
     {
@@ -49,7 +36,6 @@ namespace Task_4
 
             CreatesStudentsDirectory(studentsDirectoryName);
             WriteStudentsToTextFiles(students, studentsDirectoryName);
-
         }
         private static List<Student> ReadStudentsFromBinFile(string inputFileName)
         {
@@ -57,36 +43,38 @@ namespace Task_4
             using (var br = new BinaryReader(fs))
             {
                 List<Student> students = new List<Student>();
-                while (true)
+
+                while (fs.Position < fs.Length)
                 {
                     try
                     {
-                        long ticks = br.ReadInt64();
-                        DateTime date = DateTime.FromBinary(ticks);
-
-                        string groupString = br.ReadString();
                         string name = br.ReadString();
-                        decimal grade = br.ReadDecimal();
+                        string group = br.ReadString();
+                        long dateBinary = br.ReadInt64();
+                        DateTime dateOfBirth = DateTime.FromBinary(dateBinary);
+                        decimal averageScore = br.ReadDecimal();
 
-                        Student student = new Student
+                        //Добавляем студента в список
+                        students.Add(new Student
                         {
                             Name = name,
-                            DateOfBirth = date,
-                            AverageGrade = grade
-                        };
-                        //student.ParseGroup(groupString);
-                        students.Add(student);
+                            Group = group,
+                            DateOfBirth = dateOfBirth,
+                            AverageGrade = averageScore
+                        });
                     }
                     catch (EndOfStreamException)
                     {
                         break;
                     }
                 }
+                br.Close();
+                fs.Close();
                 return students;
             }
         }
         /// <summary>
-        /// Cоздает директорию Students на рабочем столе,
+        /// Cоздаем директорию Students на рабочем столе,
         /// если она еще не существует
         /// </summary>
         /// <param name="studentsDirectoryName"></param>
@@ -100,7 +88,7 @@ namespace Task_4
             }            
         }
         /// <summary>
-        /// Записывает данные студентов в текстовые файлы по группам.
+        /// Записываем данные студентов в текстовые файлы по группам.
         /// Группирует студентов по группам, создает отдельные текстовые файлы для каждой группы
         /// и записывает данные студентов в эти файлы.
         /// </summary>
@@ -110,8 +98,7 @@ namespace Task_4
         {
             string path = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
             string fullPath = Path.Combine(path, studentsDirectoryName);
-
-            //групперуем студентов по группам
+            
             Dictionary<string, List<Student>> groupedStudents = students.GroupBy(s => s.Group).Select(g => g.ToList()).ToDictionary(list => list.First().Group, List => List);
 
             foreach (var group in groupedStudents)
@@ -126,19 +113,6 @@ namespace Task_4
                     }
                 }
             }
-
-            //foreach (var group in students.GroupBy(s => s.Group))
-            //{
-            //    string groupFilename = $"Group_{group.Key}.txt";
-            //    string fullGroupPath = Path.Combine(path, groupFilename);
-            //    using (var sw = new StreamWriter(fullGroupPath))
-            //    {
-            //        foreach (var student in group)
-            //        {
-            //            sw.WriteLine($"{student.Name}, {student.DateOfBirth:d}, {student.AverageGrade:F2}");
-            //        }
-            //    }
-            //} 
         }
     }
 }
